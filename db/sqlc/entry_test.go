@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amallick86/Go_bank/util"
+	"github.com/amallick86/psp/util"
 	"github.com/stretchr/testify/require"
 )
 

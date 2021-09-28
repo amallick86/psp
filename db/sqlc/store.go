@@ -9,6 +9,8 @@ import (
 type Store interface {
 	Querier
 	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
+	TransferBankTx(ctx context.Context, arg TransferBankTxParams) (TransferBankTxResult, error)
+	ReceiveBankTx(ctx context.Context, arg ReceiveBankTxParams) (ReceiveBankTxResult, error)
 }
 
 //SQLStore provides all functions to execute db queries and transactions
@@ -69,7 +71,7 @@ func (store *SQLStore) TransferTx(ctx context.Context, arg TransferTxParams) (Tr
 		result.Transfer, err = q.CreateTransfer(ctx, CreateTransferParams{
 			FromAccountID: arg.FromAccountID,
 			ToAccountID:   arg.ToAccountID,
-			Amount:        arg.Amount, 
+			Amount:        arg.Amount,
 		})
 		if err != nil {
 			return err
@@ -108,6 +110,49 @@ func (store *SQLStore) TransferTx(ctx context.Context, arg TransferTxParams) (Tr
 	return result, err
 }
 
+//TransferTxParams contains the input parameters of the transfer transaction
+type TransferBankTxParams struct {
+	AccountID     int64 `json:"accountID"`
+	BankAccountID int64 `json:"bankAccountID"`
+	Amount        int64 `json:"amount"`
+}
+
+//TransferTXResult is the result of the transfer transaction
+type TransferBankTxResult struct {
+	Transfer    TransfersBank `json:"transfer"`
+	FromAccount Account       `json:"from_account"`
+}
+
+//TransferTx performs a money transfer from one account to the other.
+//It creates a transfer record, add account entries and update account balance within a single database transaction
+func (store *SQLStore) TransferBankTx(ctx context.Context, arg TransferBankTxParams) (TransferBankTxResult, error) {
+	var result TransferBankTxResult
+
+	err := store.execTx(ctx, func(q *Queries) error {
+		var err error
+
+		result.Transfer, err = q.CreateTransferBank(ctx, CreateTransferBankParams{
+			AccountID:     arg.AccountID,
+			BankAccountID: arg.BankAccountID,
+			Amount:        -arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
+		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.AccountID,
+			Amount: -arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	return result, err
+}
 func addMoney(
 	ctx context.Context,
 	q *Queries,
@@ -128,4 +173,48 @@ func addMoney(
 		Amount: amount2,
 	})
 	return
+}
+
+//TransferTxParams contains the input parameters of the transfer transaction
+type ReceiveBankTxParams struct {
+	AccountID     int64 `json:"account_id"`
+	BankAccountID int64 `json:"bankAccount_id"`
+	Amount        int64 `json:"amount"`
+}
+
+//TransferTXResult is the result of the transfer transaction
+type ReceiveBankTxResult struct {
+	Transfer  TransfersBank `json:"transfer"`
+	ToAccount Account       `json:"to_account"`
+}
+
+//TransferTx performs a money transfer from one account to the other.
+//It creates a transfer record, add account entries and update account balance within a single database transaction
+func (store *SQLStore) ReceiveBankTx(ctx context.Context, arg ReceiveBankTxParams) (ReceiveBankTxResult, error) {
+	var result ReceiveBankTxResult
+
+	err := store.execTx(ctx, func(q *Queries) error {
+		var err error
+
+		result.Transfer, err = q.CreateTransferBank(ctx, CreateTransferBankParams{
+			AccountID:     arg.AccountID,
+			BankAccountID: arg.BankAccountID,
+			Amount:        arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
+		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.AccountID,
+			Amount: arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+	return result, err
 }

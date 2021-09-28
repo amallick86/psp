@@ -1,11 +1,11 @@
 images:
 	sudo docker pull postgres
 container:
-	sudo docker run --name banking -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=root123 -d postgres
+	sudo docker run --name psps -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=root123 -d postgres
 createdb:
-	sudo docker exec -it banking createdb --username=root --owner=root psp
+	sudo docker exec -it psps createdb --username=root --owner=root psp
 dropdb:
-	sudo docker exec -it banking dropdb psp
+	sudo docker exec -it psps dropdb psp
 migrateup:
 	migrate -path db/migration -database "postgresql://root:root123@localhost:5432/psp?sslmode=disable" -verbose up
 migrateup1:

@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/amallick86/Go_bank/api"
-	db "github.com/amallick86/Go_bank/db/sqlc"
-	"github.com/amallick86/Go_bank/util"
+	"github.com/amallick86/psp/api"
+	db "github.com/amallick86/psp/db/sqlc"
+	"github.com/amallick86/psp/util"
 	_ "github.com/lib/pq"
 )
 

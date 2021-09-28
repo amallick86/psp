@@ -32,6 +32,14 @@ type Transfer struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type TransfersBank struct {
+	ID            int64     `json:"id"`
+	AccountID     int64     `json:"accountID"`
+	BankAccountID int64     `json:"bankAccountID"`
+	Amount        int64     `json:"amount"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
 type User struct {
 	Username          string    `json:"username"`
 	HashedPassword    string    `json:"hashedPassword"`
