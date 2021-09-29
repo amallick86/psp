@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,16 +11,19 @@ import (
 	db "github.com/amallick86/psp/db/sqlc"
 	"github.com/amallick86/psp/token"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type transferRequest struct {
 	FromAccountID int64  `json:"from_account_id" binding:"required,min=1"`
 	ToAccountID   int64  `json:"to_account_id" binding:"required,min=1"`
 	Amount        int64  `json:"amount" binding:"required,gt=0"`
+	Type          string `json:"type" binding:"required"`
 	Currency      string `json:"currency" binding:"required,currency"`
 }
 
 func (server *Server) createTransfer(ctx *gin.Context) {
+	var tran Transaction
 	var req transferRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -53,8 +58,32 @@ func (server *Server) createTransfer(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+	tran.Citizenship = fromAccount.Citizenship
+	tran.Type = req.Type
+	tran.From = "Bank"
+	tran.Amount = req.Amount
+	marshalRequests, err := json.Marshal(tran)
+	if err != nil {
+		logrus.Error(err)
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+	}
+	resp, err := http.NewRequest("POST", "http://localhost:8081/transaction", bytes.NewBuffer(marshalRequests))
 
-	ctx.JSON(http.StatusOK, result)
+	if err != nil {
+		logrus.Error(err)
+	}
+	client := &http.Client{}
+	response, err := client.Do(resp)
+	if err != nil {
+		fmt.Println("HTTP call failed:", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode >= 200 && response.StatusCode < 300 {
+		ctx.JSON(http.StatusOK, result)
+	} else {
+		ctx.JSON(http.StatusOK, "file not saved")
+	}
+
 }
 
 func (server *Server) validAccount(ctx *gin.Context, accountID int64, currency string) (db.Account, bool) {
